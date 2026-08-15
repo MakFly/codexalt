@@ -1,0 +1,63 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact: cx-linux-x64
+          - os: ubuntu-24.04-arm
+            artifact: cx-linux-arm64
+          - os: macos-15-intel
+            artifact: cx-macos-x64
+          - os: macos-15
+            artifact: cx-macos-arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+      - run: bun install --frozen-lockfile
+      - run: bun test
+      - run: bun run check
+      - run: bun build ./src/cli.ts --compile --outfile ./cx
+      - name: Verify tag, package, and binary versions match
+        run: |
+          tag_version="${GITHUB_REF_NAME#v}"
+          package_version="$(bun -e 'console.log((await Bun.file("package.json").json()).version)')"
+          binary_version="$(./cx --version)"
+          test "$tag_version" = "$package_version"
+          test "$package_version" = "$binary_version"
+      - run: tar -czf ${{ matrix.artifact }}.tar.gz cx LICENSE README.md
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: ${{ matrix.artifact }}.tar.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact }}.tar.gz
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - run: cd artifacts && sha256sum *.tar.gz > SHA256SUMS
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+          generate_release_notes: true

@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+      - run: bun install --frozen-lockfile
+      - run: bun run check
+      - run: bun test
+      - run: bun run build
+      - run: ./dist/cx --version
+      - run: sh -n install.sh
+      - run: sh install.sh --help
+      - name: Validate shell syntax
+        run: |
+          ./dist/cx completion bash > /tmp/cx-completion.bash
+          bash -n /tmp/cx-completion.bash
+          ./dist/cx completion zsh > /tmp/cx-completion.zsh
+          zsh -n /tmp/cx-completion.zsh

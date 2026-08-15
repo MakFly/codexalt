@@ -1,0 +1,19 @@
+{
+  "name": "codexplusplus",
+  "version": "0.3.0",
+  "description": "Switch between isolated Codex CLI accounts with one command.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "cx": "./bin/cx"
+  },
+  "scripts": {
+    "build": "bun build ./src/cli.ts --compile --outfile ./dist/cx",
+    "check": "bunx tsc --noEmit",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.9.2"
+  }
+}
