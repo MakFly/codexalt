@@ -18,6 +18,9 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version-file: .bun-version
+      - name: Install zsh on Linux
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install --yes zsh
       - run: bun install --frozen-lockfile
       - run: bun run check
       - run: bun test
