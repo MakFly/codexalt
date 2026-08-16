@@ -243,6 +243,25 @@ describe("cx CLI", () => {
     expect((await cx(["run", "constructor", "--", "--help"])).exit).toBe(0);
   });
 
+  test("repair relinks a profile created before an entry joined the shared set", async () => {
+    await cx(["account", "add", "work", "--mode", "hybrid"]);
+    await cx(["account", "add", "solo", "--mode", "isolated"]);
+    const profile = join(root, "data", "profiles", "work");
+    await rm(join(profile, "hooks.json"));
+
+    const reported = await cx(["doctor", "--offline"]);
+    expect(reported.exit).toBe(0);
+    expect(reported.stdout).toContain("WARN work: hooks.json is not linked yet");
+
+    const repaired = await cx(["account", "repair"]);
+    expect(repaired.exit).toBe(0);
+    expect(repaired.stdout).toContain("work: linked hooks.json");
+    expect(repaired.stdout).toContain("solo: isolated, nothing shared to link");
+    expect((await cx(["doctor", "--offline"])).stdout).not.toContain("not linked yet");
+    expect((await cx(["account", "repair", "work"])).stdout).toContain("already complete");
+    expect((await cx(["account", "repair", "unknown"])).exit).toBe(1);
+  });
+
   test("leaves child arguments after a separator untouched", async () => {
     await cx(["account", "add", "work", "--mode", "isolated"]);
     const result = await cx(["work", "--", "exec", "--", "-c", 'cli_auth_credentials_store="keyring"']);

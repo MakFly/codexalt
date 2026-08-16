@@ -65,7 +65,7 @@ A browser opens for each login. On a headless machine or over SSH, add `--device
 
 | Mode | Shares | Pick it when |
 | --- | --- | --- |
-| `hybrid` | `config.toml`, `AGENTS.md`, `skills`, `agents`, `rules` | You want one set of customizations across all your accounts. Good default. |
+| `hybrid` | `config.toml`, `AGENTS.md`, `CLAUDE.md`, `hooks.json`, `skills`, `agents`, `rules` | You want one set of customizations across all your accounts. Good default. |
 | `isolated` | Nothing | You need strict separation, for example a client account that must not see your rules. |
 
 Authentication, sessions, history, logs, SQLite data, plugins, and MCP credentials are always per profile, in both modes.
@@ -76,8 +76,12 @@ Hybrid profiles share through a private CodexAlt directory that begins blank. Co
 
 ```bash
 cp ~/.codex/config.toml ~/.local/share/codexalt/shared/
-cp -r ~/.codex/skills   ~/.local/share/codexalt/shared/
+cp ~/.codex/AGENTS.md   ~/.local/share/codexalt/shared/
+cp ~/.codex/hooks.json  ~/.local/share/codexalt/shared/
+cp -r ~/.codex/skills/. ~/.local/share/codexalt/shared/skills/
 ```
+
+`hooks.json` runs shell commands, and a shared one runs on every hybrid account. If a hook talks to an external service, keep the account you want isolated on `--mode isolated` instead.
 
 ## 3. Switch between accounts
 
@@ -163,6 +167,7 @@ If you take this second route, add `cli_auth_credentials_store = "file"` to that
 | Not sure which account is live | `cx account list`, or `cx account status` to ask Codex itself. |
 | Permissions or path look wrong | `cx doctor` reports directory modes, the registry, links, and the resolved Codex binary. `cx doctor --offline` skips the login probes. |
 | Login expired | `cx account login work`, optionally with `--device-auth`. |
+| Your hooks, skills, or MCP servers are missing on an account | The shared area starts blank. Copy them in as shown in section 3, then `cx account repair`. |
 | Accounts vanished after upgrading from CodexPlus | The state directory was renamed. Move it once: `mv ~/.local/share/codexplusplus ~/.local/share/codexalt`. `cx doctor` reports this. |
 | `Timed out waiting for the registry lock` | Another `cx` is mid-write. A lock left by a killed process is reclaimed automatically. |
 
@@ -203,6 +208,7 @@ Legend: double boxes are subsystems, single boxes are components. CodexAlt selec
 | `cx account login [alias] [--device-auth]` | Reauthenticate a profile |
 | `cx account logout [alias]` | Log out a profile without deleting it |
 | `cx account remove <alias> [--yes]` | Log out and delete one profile |
+| `cx account repair [alias]` | Link shared entries a hybrid profile is missing, for example after the shared set grew |
 | `cx use <alias>` | Atomically change the active account |
 | `cx default -- <args>` | Run Codex with the active account |
 | `cx run [alias] -- <args>` | Run Codex with an explicit or active account |
@@ -219,7 +225,7 @@ Aliases must match `[a-z0-9][a-z0-9_-]{0,31}`. Command names are reserved.
 ## Isolation and security model
 
 - `isolated` profiles share nothing.
-- `hybrid` profiles share only `config.toml`, `AGENTS.md`, `skills`, `agents`, and `rules`, through CodexAlt's private shared directory.
+- `hybrid` profiles share only `config.toml`, `AGENTS.md`, `CLAUDE.md`, `hooks.json`, `skills`, `agents`, and `rules`, through CodexAlt's private shared directory. A shared `hooks.json` executes on every hybrid account, so treat it as trusted code.
 - The shared area starts blank. CodexAlt deliberately does not seed it from or modify `~/.codex`.
 - Authentication, sessions, history, logs, SQLite data, plugins, and MCP credentials remain profile-specific.
 - Every Codex invocation receives `-c cli_auth_credentials_store="file"` and a profile-specific `CODEX_HOME`.

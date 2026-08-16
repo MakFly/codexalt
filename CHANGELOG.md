@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- `hooks.json` and `CLAUDE.md` join the hybrid shared set (`src/profile.ts`). A Codex harness is not only `config.toml`: without a shared `hooks.json`, no hook fires on a hybrid account, which made the mode look broken to anyone who used hooks. A shared `hooks.json` executes shell commands on every hybrid account, so `README.md` now says to use `--mode isolated` when a hook must not cross accounts.
+- `cx account repair [alias]`: links the shared entries a hybrid profile is missing. Profiles created before an entry joined the shared set do not have its link, and the set will grow again. Repair only adds what is absent, never replaces a file the user put there, and reports isolated profiles as having nothing to do.
+- Shared files are seeded per format instead of always blank. Empty is valid TOML and valid Markdown but not valid JSON, so a fresh `hooks.json` is seeded with `{"hooks":{}}`.
+
+### Changed
+
+- `cx doctor` derives its checks from the shared set rather than a hardcoded list, so the two cannot drift apart again. A missing shared entry or an unlinked profile entry is now a `WARN` naming `cx account repair`, instead of an `ENOENT` that aborted the remaining checks for that profile.
+
 ## [0.4.0] - 16-08-2026
 
 ### Changed

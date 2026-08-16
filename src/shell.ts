@@ -14,7 +14,7 @@ export function shellCompletion(shell: SupportedShell): string {
     return `_cx_complete() {
   local current="\${COMP_WORDS[COMP_CWORD]}"
   local commands="account use run default doctor shell completion help version"
-  local account_commands="add list label status login logout remove"
+  local account_commands="add list label status login logout remove repair"
   if [[ "\${COMP_WORDS[1]}" == "account" ]]; then
     COMPREPLY=( $(compgen -W "$account_commands" -- "$current") )
   else
@@ -26,7 +26,7 @@ export function shellCompletion(shell: SupportedShell): string {
 _cx_complete() {
   local -a commands account_commands
   commands=(account use run default doctor shell completion help version)
-  account_commands=(add list label status login logout remove)
+  account_commands=(add list label status login logout remove repair)
   if [[ "$words[2]" == "account" ]]; then
     _describe 'account command' account_commands
   else

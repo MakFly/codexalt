@@ -3,7 +3,10 @@ import { lstat, readdir, readlink } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { resolveCodexBinary, runCodex, runCodexPassthrough, secureAuthFile } from "./codex";
 import { assertSafeProfileDirectory, getAppPaths, legacyDataRoots } from "./paths";
-import { createStagedProfile, discardStagedProfile, publishProfile, removeProfileDirectory } from "./profile";
+import {
+  createStagedProfile, discardStagedProfile, publishProfile, relinkSharedEntries, removeProfileDirectory,
+  SHARED_ENTRIES, SHARED_FILE_NAMES,
+} from "./profile";
 import { hasProfile, readRegistry, updateRegistry, withRegistryLock, writeRegistry } from "./registry";
 import { requireShell, shellCompletion, shellInit } from "./shell";
 import { PROFILE_MODES, type ProfileMode, type Registry } from "./types";
@@ -25,6 +28,7 @@ Usage:
   cx account list [--json]
   cx account label <alias> <identity>|--clear
   cx account status|login|logout|remove <alias>
+  cx account repair [alias]
   cx use <alias>
   cx run [alias] [-- <codex arguments>]
   cx default [-- <codex arguments>]
@@ -310,6 +314,23 @@ async function accountAuth(action: "status" | "login" | "logout", args: string[]
   return exit;
 }
 
+async function accountRepair(args: string[]): Promise<number> {
+  const aliases = args.filter((argument) => !argument.startsWith("--"));
+  if (args.length !== aliases.length) fail("Usage: cx account repair [alias]");
+  if (aliases.length > 1) fail("Too many account aliases for account repair.");
+  const registry = await readRegistry(paths);
+  const targets = aliases.length ? [requireProfile(registry, aliases[0])] : Object.keys(registry.profiles).sort();
+  if (!targets.length) { output("No accounts configured."); return 0; }
+  for (const alias of targets) {
+    const profile = registry.profiles[alias]!;
+    if (profile.mode !== "hybrid") { output(`${alias}: isolated, nothing shared to link.`); continue; }
+    const home = await assertSafeProfileDirectory(paths, alias);
+    const added = await relinkSharedEntries(paths, home);
+    output(added.length ? `${alias}: linked ${added.join(", ")}.` : `${alias}: already complete.`);
+  }
+  return 0;
+}
+
 function profilePathForPublished(alias: string): string {
   return join(paths.profiles, alias);
 }
@@ -391,10 +412,15 @@ async function doctor(args: string[]): Promise<number> {
       if (!shared.isDirectory() || shared.isSymbolicLink() || (shared.mode & 0o777) !== 0o700) {
         problems.push("shared directory must be a real directory with permissions 700.");
       }
-      for (const name of ["config.toml", "AGENTS.md"]) {
-        const metadata = await lstat(join(paths.shared, name));
-        if (!metadata.isFile() || metadata.isSymbolicLink() || (metadata.mode & 0o777) !== 0o600) {
-          problems.push(`shared ${name} must be a regular file with permissions 600.`);
+      for (const name of SHARED_FILE_NAMES) {
+        try {
+          const metadata = await lstat(join(paths.shared, name));
+          if (!metadata.isFile() || metadata.isSymbolicLink() || (metadata.mode & 0o777) !== 0o600) {
+            problems.push(`shared ${name} must be a regular file with permissions 600.`);
+          }
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+          warnings.push(`shared ${name} is missing. Run 'cx account repair' to create it.`);
         }
       }
     } catch (error) { problems.push(`shared area: ${(error as Error).message}`); }
@@ -414,11 +440,17 @@ async function doctor(args: string[]): Promise<number> {
         else problems.push(`${alias}: cannot inspect auth.json metadata.`);
       }
       if (profile.mode === "hybrid") {
-        for (const name of ["config.toml", "AGENTS.md", "skills", "agents", "rules"]) {
+        for (const name of SHARED_ENTRIES) {
           const item = join(home, name);
-          const stat = await lstat(item);
-          if (!stat.isSymbolicLink()) problems.push(`${alias}: ${name} is not linked to the shared area.`);
-          else if (resolve(home, await readlink(item)) !== join(paths.shared, name)) problems.push(`${alias}: unsafe ${name} link.`);
+          try {
+            const stat = await lstat(item);
+            if (!stat.isSymbolicLink()) problems.push(`${alias}: ${name} is not linked to the shared area.`);
+            else if (resolve(home, await readlink(item)) !== join(paths.shared, name)) problems.push(`${alias}: unsafe ${name} link.`);
+          } catch (error) {
+            if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+            // Profiles created before this entry joined the shared set.
+            warnings.push(`${alias}: ${name} is not linked yet. Run 'cx account repair ${alias}'.`);
+          }
         }
       }
       // A login check asks Codex, and therefore the network. It is a warning, not
@@ -447,7 +479,8 @@ async function accountCommand(args: string[]): Promise<number> {
   if (command === "label") return accountLabel(rest);
   if (command === "status" || command === "login" || command === "logout") return accountAuth(command, rest);
   if (command === "remove") return accountRemove(rest);
-  fail("Usage: cx account add|list|label|status|login|logout|remove");
+  if (command === "repair") return accountRepair(rest);
+  fail("Usage: cx account add|list|label|status|login|logout|remove|repair");
 }
 
 export async function main(args: string[]): Promise<number> {

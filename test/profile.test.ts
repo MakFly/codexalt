@@ -3,7 +3,7 @@ import { chmod, lstat, mkdir, mkdtemp, readdir, readlink, rm, symlink, writeFile
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { getAppPaths } from "../src/paths";
-import { createStagedProfile, publishProfile, removeProfileDirectory } from "../src/profile";
+import { createStagedProfile, publishProfile, relinkSharedEntries, removeProfileDirectory } from "../src/profile";
 
 const temporary: string[] = [];
 afterEach(async () => Promise.all(temporary.splice(0).map((path) => rm(path, { recursive: true, force: true }))));
@@ -15,8 +15,34 @@ describe("profiles", () => {
     const staged = await createStagedProfile(paths, "work", "hybrid");
     expect((await lstat(staged)).mode & 0o777).toBe(0o700);
     expect((await readdir(staged)).sort())
-      .toEqual(["AGENTS.md", "agents", "config.toml", "rules", "skills"]);
+      .toEqual(["AGENTS.md", "CLAUDE.md", "agents", "config.toml", "hooks.json", "rules", "skills"]);
     expect(await readlink(join(staged, "config.toml"))).toBe(join(paths.shared, "config.toml"));
+    // A blank hooks.json must still parse, unlike an empty file.
+    expect(JSON.parse(await Bun.file(join(paths.shared, "hooks.json")).text())).toEqual({ hooks: {} });
+    expect(await Bun.file(join(paths.shared, "config.toml")).text()).toBe("");
+  });
+
+  test("relink adds newly shared entries without touching existing ones", async () => {
+    const root = await mkdtemp(join(tmpdir(), "cx-profile-")); temporary.push(root);
+    const paths = getAppPaths({ CX_DATA_HOME: root });
+    const profile = await publishProfile(paths, await createStagedProfile(paths, "work", "hybrid"), "work");
+    await rm(join(profile, "hooks.json"));
+    await writeFile(join(paths.shared, "config.toml"), "model = \"gpt-5\"\n");
+
+    expect(await relinkSharedEntries(paths, profile)).toEqual(["hooks.json"]);
+    expect(await readlink(join(profile, "hooks.json"))).toBe(join(paths.shared, "hooks.json"));
+    // Existing links and shared content are left exactly as they were.
+    expect(await Bun.file(join(paths.shared, "config.toml")).text()).toBe("model = \"gpt-5\"\n");
+    expect(await relinkSharedEntries(paths, profile)).toEqual([]);
+  });
+
+  test("relink refuses to replace a real file the user placed in the profile", async () => {
+    const root = await mkdtemp(join(tmpdir(), "cx-profile-")); temporary.push(root);
+    const paths = getAppPaths({ CX_DATA_HOME: root });
+    const profile = await publishProfile(paths, await createStagedProfile(paths, "work", "isolated"), "work");
+    await writeFile(join(profile, "config.toml"), "mine", { mode: 0o600 });
+    await expect(relinkSharedEntries(paths, profile)).rejects.toThrow("is not a link to the shared area");
+    expect(await Bun.file(join(profile, "config.toml")).text()).toBe("mine");
   });
 
   test("isolated starts empty", async () => {
