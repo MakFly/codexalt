@@ -33,7 +33,7 @@ Usage:
   cx run [alias] [-- <codex arguments>]
   cx default [-- <codex arguments>]
   cx <alias> [-- <codex arguments>]
-  cx <codex arguments>                    for example: cx --yolo, cx -s read-only
+  cx <codex arguments>                    for example: cx --yolo, cx exec "prompt"
   cx doctor [--offline]
   cx --upgrade [--install-dir <directory>]
   cx --uninstall [--install-dir <directory>] [--purge] [--yes]
@@ -535,15 +535,17 @@ export async function main(args: string[]): Promise<number> {
     const codexArgs = candidate === rest[0] ? rest.slice(1) : rest;
     return launch(requireProfile(registry, candidate), withoutSeparator(codexArgs));
   }
-  // Codex forwards unrecognized options to its interactive CLI. Mirror that: cx
-  // owns only the flags matched above, so anything else starting with '-' is a
-  // Codex flag meant for the active account. Keep this branch last, and add any
-  // future cx option as a subcommand rather than a root flag, or it silently
-  // shadows the Codex flag of the same name. Bare words stay alias-validated so
-  // a mistyped alias is an error instead of a silent Codex prompt.
-  if (command.startsWith("-")) return defaultCommand(withoutSeparator(args));
-  validateAlias(command);
-  return launch(command, withoutSeparator(rest));
+  // Codex resolves a known subcommand first and treats anything else as the
+  // prompt or as flags for its interactive CLI. Mirror that split: cx owns
+  // account selection, Codex owns the rest, so `cx exec …`, `cx resume`,
+  // `cx --yolo`, and `cx "fix this"` behave as they do under plain codex.
+  // An account alias wins over a Codex subcommand of the same name, exactly
+  // like `cx run <alias>` above. Keep this branch last, and add any future cx
+  // option as a subcommand rather than a root flag, or it silently shadows the
+  // Codex flag of the same name.
+  const registry = await readRegistry(paths);
+  if (hasProfile(registry, command)) return launch(command, withoutSeparator(rest));
+  return defaultCommand(withoutSeparator(args));
 }
 
 if (import.meta.main) {

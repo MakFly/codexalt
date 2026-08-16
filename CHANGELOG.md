@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+
+- `cx` now forwards every argument it does not own to Codex, instead of only the ones starting with `-`. `cx exec "prompt"`, `cx resume --last`, and `cx "fix this bug"` therefore work like their plain `codex` equivalents, where 0.4.1 answered `Unknown account 'exec'`. The split mirrors Codex itself: Codex resolves a known subcommand first and treats anything else as the prompt, so cx resolves a known account first and hands the rest over. An account alias still wins over a Codex subcommand of the same name, exactly as in `cx run <alias>`; use `cx default -- exec "…"` to reach Codex when an account is called `exec`. The cost is that a mistyped alias now opens a Codex session with that word as the prompt rather than failing with `Unknown account`, which is the same trade Codex makes.
+
 ## [0.4.1] - 17-08-2026
 
 ### Added

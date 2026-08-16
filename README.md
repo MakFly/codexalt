@@ -93,15 +93,16 @@ cx                  # launch Codex with the active account
 
 `cx` with no arguments launches the active account. Before the first account exists, it prints help instead.
 
-Codex options work directly on `cx`, with or without an alias:
+Codex arguments work directly on `cx`, with or without an alias:
 
 ```bash
-cx --yolo               # active account, flags forwarded to Codex
-cx -s read-only         # same, short form
-cx work --yolo          # explicit account
+cx --yolo                     # active account, flags forwarded to Codex
+cx exec "summarize this repo" # non-interactive, same forwarding
+cx resume --last
+cx work --yolo                # explicit account
 ```
 
-Anything `cx` does not own itself goes to Codex untouched. A word that is not an alias stays an error, so a typo never turns into a Codex prompt.
+`cx` owns account selection and nothing else. An argument that names one of your accounts selects it; everything else goes to Codex untouched, which then applies its own rule of known subcommand first, anything else as the prompt. An account alias wins over a Codex subcommand of the same name, so an account called `exec` keeps `cx exec` for itself. Reach Codex explicitly in that case with `cx default -- exec "…"`.
 
 ## 4. Make `codex` follow the active account
 
@@ -223,7 +224,7 @@ Legend: double boxes are subsystems, single boxes are components. CodexAlt selec
 | `cx default -- <args>` | Run Codex with the active account |
 | `cx run [alias] -- <args>` | Run Codex with an explicit or active account |
 | `cx <alias> -- <args>` | Short form for an explicit account |
-| `cx <codex arguments>` | Run Codex with the active account, for example `cx --yolo` or `cx -s read-only` |
+| `cx <codex arguments>` | Run Codex with the active account, for example `cx --yolo` or `cx exec "prompt"` |
 | `cx doctor [--offline]` | Check paths, permissions, links, and the Codex executable. `--offline` skips the per-account login probe |
 | `cx --upgrade [--install-dir <directory>]` | Download, checksum, and atomically install the latest release |
 | `cx --uninstall [--install-dir <directory>]` | Remove only the running `cx` executable and preserve account state |

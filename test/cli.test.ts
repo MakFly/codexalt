@@ -301,7 +301,7 @@ describe("cx CLI", () => {
     expect(blocked.stderr).toContain("cannot be overridden");
   });
 
-  test("keeps cx flags and mistyped aliases away from Codex", async () => {
+  test("keeps cx commands and flags away from Codex", async () => {
     await cx(["account", "add", "work", "--mode", "isolated"]);
     const before = await readFile(log, "utf8");
 
@@ -310,11 +310,35 @@ describe("cx CLI", () => {
     const lifecycle = await cx(["--uninstall", "--bogus"]);
     expect(lifecycle.exit).toBe(1);
     expect(lifecycle.stderr).toContain("Unknown lifecycle option");
-
-    const typo = await cx(["wrk"]);
-    expect(typo.exit).toBe(1);
-    expect(typo.stderr).toContain("Unknown account 'wrk'");
+    expect((await cx(["doctor", "--offline"])).exit).toBe(0);
     expect(await readFile(log, "utf8")).toBe(before);
+  });
+
+  test("hands unknown words to Codex, which owns subcommands and prompts", async () => {
+    await cx(["account", "add", "work", "--mode", "isolated"]);
+    const home = join(root, "data", "profiles", "work");
+
+    // Codex resolves 'exec' as a subcommand and a bare word as the prompt. cx
+    // does not decide between the two, it forwards and lets Codex decide.
+    expect((await cx(["exec", "hello"])).exit).toBe(0);
+    expect((await readFile(log, "utf8")).trim().split("\n").pop())
+      .toBe(`${home}|exec hello -c cli_auth_credentials_store="file"`);
+
+    expect((await cx(["fix this bug"])).exit).toBe(0);
+    expect((await readFile(log, "utf8")).trim().split("\n").pop())
+      .toBe(`${home}|fix this bug -c cli_auth_credentials_store="file"`);
+  });
+
+  test("an account alias wins over a Codex subcommand of the same name", async () => {
+    await cx(["account", "add", "exec", "--mode", "isolated"]);
+    await cx(["account", "add", "work", "--mode", "isolated"]);
+    await cx(["use", "work"]);
+
+    // 'exec' is a real account here, so it selects that profile instead of
+    // reaching Codex, exactly like 'cx run exec' would.
+    expect((await cx(["exec", "--yolo"])).exit).toBe(0);
+    expect((await readFile(log, "utf8")).trim().split("\n").pop())
+      .toBe(`${join(root, "data", "profiles", "exec")}|--yolo -c cli_auth_credentials_store="file"`);
   });
 
   test("refuses forwarded flags when no account is selected", async () => {
