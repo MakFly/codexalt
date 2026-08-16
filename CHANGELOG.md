@@ -6,14 +6,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.0] - 16-08-2026
+
 ### Changed
 
 - **Renamed the project from CodexPlus to CodexAlt.** The GitHub repository moved from `MakFly/codexplusplus` to `MakFly/codexalt`. GitHub redirects the old URLs, so existing clones and installer links keep resolving, but they should be updated.
 - Renamed the installer environment variables: `CODEXPLUS_INSTALL_DIR`, `CODEXPLUS_VERSION`, `CODEXPLUS_REPOSITORY`, and `CODEXPLUS_RELEASE_BASE_URL` are now `CODEXALT_*`. The `CX_DATA_HOME` and `CX_CODEX_BIN` variables are unchanged.
 - Renamed the npm package and all user-facing strings in the CLI, shell integration, and error messages.
 - Restructured `README.md` around the user journey instead of the reference material. Order is now install, add accounts, switch, shell integration, one-off runs, other tools, troubleshooting, then the architecture diagram, command reference, and security model.
-- Declared the project **Linux only**. `README.md` no longer documents macOS support in the requirements, installer description, build instructions, or state directory paths.
+- Declared the project **Linux only**, in the code as well as the documentation. Removed the `darwin` state directory branch (`src/paths.ts`), the `cx-macos-*` release artifacts (`src/lifecycle.ts`), the `Darwin-*` cases in `install.sh`, the macOS release matrix entries, and the `macos-latest` CI runner. `releaseArtifact` now names the supported targets when it refuses a platform.
 - Documented the state directory as `$XDG_DATA_HOME/codexalt` only, defaulting to `~/.local/share/codexalt`.
+- `cx doctor` now separates `WARN` from `FAIL`. A login that Codex reports as expired is a warning and no longer makes the whole check exit 1, so a stale token stays distinguishable from a broken profile layout.
+- The registry is validated when it is read, not when a value happens to be displayed. Every profile entry must carry a valid alias, a known mode, a parsable `createdAt`, and a safe label. A tampered entry is now refused by every command instead of only by `cx account list`.
+- A registry lock left behind by a killed process is reclaimed automatically once its owner is confirmed dead and the file is unchanged, instead of demanding a manual `rm`. A lock whose owner is still alive, including under another user, is never stolen.
+- `cx account add` parses its options positionally. A value is always taken literally, so `--label --team--` works, and a stray argument that happens to equal the mode or the label is now rejected.
+
+### Fixed
+
+- Aliases that collide with `Object.prototype` keys, `constructor` in particular, were reported as already existing and could not be created (`src/cli.ts`, `src/registry.ts`). Profile maps are now null-prototype and every membership test goes through `Object.hasOwn`.
+- `assertNoCredentialStoreOverride` scanned the whole argument list while the `-c` injection stopped at the first `--`. A legitimate argument meant for a child process was therefore rejected. Both now stop at the separator.
+- Spawning the Codex CLI is bounded to 8 nested levels through `CX_SPAWN_DEPTH`. A third-party wrapper named `codex` earlier on `PATH` that calls back into `cx` now produces one actionable error naming `CX_CODEX_BIN`, instead of unbounded recursion. This closes the recursion issue listed under 0.3.0.
+- `resolveCodexBinary` requires a regular file. A directory named `codex` on `PATH` satisfied the `X_OK` check and was accepted as the Codex executable.
+- Removed a dead condition in `cx account label` whose two branches tested the same thing.
 
 ### Added
 
@@ -24,6 +38,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - `README.md`: a troubleshooting table mapping symptoms to fixes.
 - `README.md`: `cx shell init bash|zsh` added to the command reference table, where it was missing despite existing in the CLI.
 - `CHANGELOG.md` (this file).
+- `cx doctor --offline` skips the per-account login probe, so the check runs without touching the network.
+- `cx doctor` reports accounts left behind in the pre-rename `~/.local/share/codexplusplus` directory, with the `mv` command to move them. This is a report only, nothing is migrated automatically.
+- The shell hook falls back to the real Codex CLI when no CodexAlt account exists yet. Installing it before adding an account no longer breaks the plain `codex` command. The fallback runs with the ambient `CODEX_HOME` and no injected credential store, and prints a notice on stderr.
+- A test asserting that `VERSION` and `package.json` agree, so a release tag cannot fail the workflow's version check.
 
 ### Breaking
 
@@ -38,11 +56,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### CI
 
 - Upgraded the release workflow actions to Node 24 minimum versions (`57fb0a1`).
-
-### Known issues
-
-- `resolveCodexBinary` (`src/codex.ts:10`) only excludes CodexAlt's own paths, not third parties. A wrapper named `codex` placed earlier on `PATH` that calls back into `cx` is accepted as "the real Codex CLI", producing unbounded recursion. `selectedCodex` (`src/cli.ts:99`) then persists that path into `registry.codexBinary`, so the failure survives a restart. Reproduced with `cx doctor` against a synthetic shim. Not triggered by any documented workflow, but it blocks adding a `PATH` shim.
-- The repository still builds, tests, ships, and self-upgrades macOS artifacts (`install.sh`, both workflows, `src/paths.ts:19`, `src/lifecycle.ts:16`) while the documentation declares Linux only. Code and documentation are intentionally out of step until the support scope is settled.
+- Dropped the macOS CI runner and the two macOS release matrix entries, matching the Linux-only scope.
 
 ## [0.3.0] - 16-08-2026
 
@@ -79,5 +93,6 @@ First public release. Tagged at `5734fc1`.
 
 - Versions 0.1.0 and 0.2.0 were never published. Development happened before the repository was made public and was squashed into the initial release commit, which was tagged `v0.3.0`.
 
-[Unreleased]: https://github.com/MakFly/codexalt/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/MakFly/codexalt/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/MakFly/codexalt/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/MakFly/codexalt/releases/tag/v0.3.0

@@ -5,7 +5,7 @@ export function shellInit(shell: SupportedShell): string {
     ? "complete -F _cx_complete cx codex"
     : "compdef _cx_complete cx codex";
   return `# CodexAlt (${shell})\n` +
-    `codex() { command cx default -- \"$@\"; }\n` +
+    `codex() { CX_SHELL_HOOK=1 command cx default -- \"$@\"; }\n` +
     `${shellCompletion(shell)}\n${completion}\n`;
 }
 

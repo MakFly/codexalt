@@ -18,10 +18,6 @@ jobs:
             artifact: cx-linux-x64
           - os: ubuntu-24.04-arm
             artifact: cx-linux-arm64
-          - os: macos-15-intel
-            artifact: cx-macos-x64
-          - os: macos-15
-            artifact: cx-macos-arm64
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5

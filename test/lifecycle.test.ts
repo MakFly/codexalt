@@ -28,14 +28,14 @@ describe("release lifecycle", () => {
   test.each([
     ["linux", "x64", "cx-linux-x64"],
     ["linux", "arm64", "cx-linux-arm64"],
-    ["darwin", "x64", "cx-macos-x64"],
-    ["darwin", "arm64", "cx-macos-arm64"],
+    ["linux", "aarch64", "cx-linux-arm64"],
   ])("maps %s/%s to %s", (platform, architecture, artifact) => {
     expect(releaseArtifact(platform, architecture)).toBe(artifact);
   });
 
   test("fails closed for unsupported platforms and ambiguous manifests", () => {
     expect(() => releaseArtifact("win32", "x64")).toThrow("Unsupported platform");
+    expect(() => releaseArtifact("darwin", "arm64")).toThrow("Unsupported platform");
     const checksum = "a".repeat(64);
     expect(() => expectedChecksum(`${checksum}  a.tar.gz\n${checksum}  a.tar.gz\n`, "a.tar.gz"))
       .toThrow("exactly one entry");

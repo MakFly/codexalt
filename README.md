@@ -110,6 +110,8 @@ codex --sandbox workspace-write   # runs on 'personal'
 
 This installs a shell function, so it only applies to shells that source your startup file. Tools that spawn the `codex` binary directly, such as editor extensions, CI jobs, or MCP clients, bypass it and keep using `~/.codex`. See [Using a specific account from other tools](#using-a-specific-account-from-other-tools) for those.
 
+If no CodexAlt account exists yet, the hook prints a notice and runs the real Codex CLI against your existing `~/.codex`, so installing it in the wrong order never leaves you without a working `codex` command.
+
 ## 5. Run a one-off on another account
 
 You can use any account without changing the active one:
@@ -159,8 +161,10 @@ If you take this second route, add `cli_auth_credentials_store = "file"` to that
 | `Cannot find the real Codex CLI` | Install the official `codex` binary, or set `CX_CODEX_BIN` to its absolute path. |
 | `codex` still uses the old account | You added the shell hook but did not reopen your shell, or the caller spawns `codex` directly. See section 4. |
 | Not sure which account is live | `cx account list`, or `cx account status` to ask Codex itself. |
-| Permissions or path look wrong | `cx doctor` reports directory modes, the registry, links, and the resolved Codex binary. |
+| Permissions or path look wrong | `cx doctor` reports directory modes, the registry, links, and the resolved Codex binary. `cx doctor --offline` skips the login probes. |
 | Login expired | `cx account login work`, optionally with `--device-auth`. |
+| Accounts vanished after upgrading from CodexPlus | The state directory was renamed. Move it once: `mv ~/.local/share/codexplusplus ~/.local/share/codexalt`. `cx doctor` reports this. |
+| `Timed out waiting for the registry lock` | Another `cx` is mid-write. A lock left by a killed process is reclaimed automatically. |
 
 ## How it works
 
@@ -203,7 +207,7 @@ Legend: double boxes are subsystems, single boxes are components. CodexAlt selec
 | `cx default -- <args>` | Run Codex with the active account |
 | `cx run [alias] -- <args>` | Run Codex with an explicit or active account |
 | `cx <alias> -- <args>` | Short form for an explicit account |
-| `cx doctor` | Check paths, permissions, links, and the Codex executable |
+| `cx doctor [--offline]` | Check paths, permissions, links, and the Codex executable. `--offline` skips the per-account login probe |
 | `cx --upgrade [--install-dir <directory>]` | Download, checksum, and atomically install the latest release |
 | `cx --uninstall [--install-dir <directory>]` | Remove only the running `cx` executable and preserve account state |
 | `cx --uninstall --purge --yes` | Also remove validated CodexAlt-owned state after explicit consent |

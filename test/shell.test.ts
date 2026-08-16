@@ -28,7 +28,7 @@ async function exerciseShim(shell: "bash" | "zsh"): Promise<string | null> {
 describe("shell integration", () => {
   test("bash shim preserves arguments and avoids invoking codex recursively", () => {
     const script = shellInit("bash");
-    expect(script).toContain('codex() { command cx default -- "$@"; }');
+    expect(script).toContain('codex() { CX_SHELL_HOOK=1 command cx default -- "$@"; }');
     expect(script).toContain("complete -F _cx_complete cx codex");
   });
 

@@ -1,6 +1,5 @@
 import { chmod, lstat, mkdir, realpath } from "node:fs/promises";
 import { delimiter, dirname, join, resolve } from "node:path";
-import { platform } from "node:os";
 
 export interface AppPaths {
   root: string;
@@ -16,9 +15,7 @@ export function getAppPaths(env: NodeJS.ProcessEnv = process.env): AppPaths {
 
   const root = explicit
     ? resolve(explicit)
-    : platform() === "darwin"
-      ? join(home!, "Library", "Application Support", "codexalt")
-      : join(env.XDG_DATA_HOME || join(home!, ".local", "share"), "codexalt");
+    : join(env.XDG_DATA_HOME || join(home!, ".local", "share"), "codexalt");
 
   return {
     root,
@@ -26,6 +23,16 @@ export function getAppPaths(env: NodeJS.ProcessEnv = process.env): AppPaths {
     profiles: join(root, "profiles"),
     shared: join(root, "shared"),
   };
+}
+
+// Data roots used by earlier releases. State is never migrated automatically;
+// doctor only reports them so accounts do not appear to vanish after an upgrade.
+const LEGACY_DIRECTORY_NAMES = ["codexplusplus"];
+
+export function legacyDataRoots(env: NodeJS.ProcessEnv = process.env): string[] {
+  if (env.CX_DATA_HOME || !env.HOME) return [];
+  const base = env.XDG_DATA_HOME || join(env.HOME, ".local", "share");
+  return LEGACY_DIRECTORY_NAMES.map((name) => join(base, name));
 }
 
 export async function ensurePrivateDirectory(path: string): Promise<void> {

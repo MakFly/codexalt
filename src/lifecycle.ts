@@ -13,9 +13,7 @@ export type Download = (url: string) => Promise<Uint8Array>;
 export function releaseArtifact(platform: string = hostPlatform(), architecture: string = hostArch()): string {
   if (platform === "linux" && architecture === "x64") return "cx-linux-x64";
   if (platform === "linux" && (architecture === "arm64" || architecture === "aarch64")) return "cx-linux-arm64";
-  if (platform === "darwin" && architecture === "x64") return "cx-macos-x64";
-  if (platform === "darwin" && architecture === "arm64") return "cx-macos-arm64";
-  throw new Error(`Unsupported platform: ${platform}/${architecture}.`);
+  throw new Error(`Unsupported platform: ${platform}/${architecture}. CodexAlt targets Linux x64 and arm64 only.`);
 }
 
 export function expectedChecksum(manifest: string, filename: string): string {

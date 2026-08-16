@@ -1,16 +1,16 @@
 #!/usr/bin/env bun
-import { lstat, readlink } from "node:fs/promises";
+import { lstat, readdir, readlink } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { resolveCodexBinary, runCodex, secureAuthFile } from "./codex";
-import { assertSafeProfileDirectory, getAppPaths } from "./paths";
+import { resolveCodexBinary, runCodex, runCodexPassthrough, secureAuthFile } from "./codex";
+import { assertSafeProfileDirectory, getAppPaths, legacyDataRoots } from "./paths";
 import { createStagedProfile, discardStagedProfile, publishProfile, removeProfileDirectory } from "./profile";
-import { readRegistry, updateRegistry, withRegistryLock, writeRegistry } from "./registry";
+import { hasProfile, readRegistry, updateRegistry, withRegistryLock, writeRegistry } from "./registry";
 import { requireShell, shellCompletion, shellInit } from "./shell";
 import { PROFILE_MODES, type ProfileMode, type Registry } from "./types";
 import { validateAlias, validateLabel } from "./validation";
 import { uninstallCx, upgradeCx } from "./lifecycle";
 
-export const VERSION = "0.3.0";
+export const VERSION = "0.4.0";
 const paths = getAppPaths();
 
 function output(message = ""): void { process.stdout.write(`${message}\n`); }
@@ -29,7 +29,7 @@ Usage:
   cx run [alias] [-- <codex arguments>]
   cx default [-- <codex arguments>]
   cx <alias> [-- <codex arguments>]
-  cx doctor
+  cx doctor [--offline]
   cx --upgrade [--install-dir <directory>]
   cx --uninstall [--install-dir <directory>] [--purge] [--yes]
   cx shell init bash|zsh
@@ -92,7 +92,7 @@ async function uninstallCommand(args: string[]): Promise<number> {
 function requireProfile(registry: Registry, alias: string | null | undefined): string {
   if (!alias) fail("No account selected. Run 'cx use <alias>' or provide an alias.");
   validateAlias(alias);
-  if (!registry.profiles[alias]) fail(`Unknown account '${alias}'.`);
+  if (!hasProfile(registry, alias)) fail(`Unknown account '${alias}'.`);
   return alias;
 }
 
@@ -113,37 +113,57 @@ async function launch(alias: string, codexArgs: string[]): Promise<number> {
   return runCodex(binary, home, codexArgs);
 }
 
-function optionValue(args: string[], name: string): string | undefined {
-  const index = args.indexOf(name);
-  if (index === -1) return undefined;
-  const value = args[index + 1];
-  if (!value || value.startsWith("--")) fail(`Missing value for ${name}.`);
-  return value;
+interface AddArguments { mode?: ProfileMode; label?: string; deviceAuth: boolean }
+
+// Positional parsing, so an option value is always taken literally. A label may
+// legitimately start with '--', and a stray argument that happens to equal the
+// mode or the label must still be rejected.
+function parseAddArguments(args: string[]): AddArguments {
+  const parsed: AddArguments = { deviceAuth: false };
+  for (let index = 0; index < args.length; index += 1) {
+    const argument = args[index]!;
+    if (argument === "--mode") {
+      if (parsed.mode !== undefined) fail("Option '--mode' cannot be repeated.");
+      const value = args[index + 1];
+      if (value === undefined) fail("Missing value for --mode.");
+      if (!PROFILE_MODES.includes(value as ProfileMode)) fail("Choose --mode hybrid or --mode isolated.");
+      parsed.mode = value as ProfileMode;
+      index += 1;
+    } else if (argument === "--label") {
+      if (parsed.label !== undefined) fail("Option '--label' cannot be repeated.");
+      const value = args[index + 1];
+      if (value === undefined) fail("Missing value for --label.");
+      parsed.label = value;
+      index += 1;
+    } else if (argument === "--device-auth") {
+      if (parsed.deviceAuth) fail("Option '--device-auth' cannot be repeated.");
+      parsed.deviceAuth = true;
+    } else {
+      fail(`Unknown option '${argument}'.`);
+    }
+  }
+  return parsed;
 }
 
 async function accountAdd(args: string[]): Promise<number> {
   const alias = validateAlias(args[0] || fail("Missing account alias."));
+  const parsed = parseAddArguments(args.slice(1));
   const registry = await readRegistry(paths);
-  if (registry.profiles[alias]) fail(`Account '${alias}' already exists.`);
-  for (const option of ["--mode", "--label", "--device-auth"]) {
-    if (args.filter((argument) => argument === option).length > 1) fail(`Option '${option}' cannot be repeated.`);
-  }
-  let mode = optionValue(args, "--mode") as ProfileMode | undefined;
+  if (hasProfile(registry, alias)) fail(`Account '${alias}' already exists.`);
+  let mode = parsed.mode;
   if (!mode && process.stdin.isTTY) {
     const answer = prompt("Profile mode (hybrid/isolated): ")?.trim();
     mode = answer as ProfileMode | undefined;
   }
   if (!mode || !PROFILE_MODES.includes(mode)) fail("Choose --mode hybrid or --mode isolated.");
-  let label = optionValue(args, "--label");
-  if (!label && process.stdin.isTTY) label = prompt("Account label (email/workspace, optional): ")?.trim() || undefined;
+  let label = parsed.label;
+  if (label === undefined && process.stdin.isTTY) label = prompt("Account label (email/workspace, optional): ")?.trim() || undefined;
   const normalizedLabel = label ? validateLabel(label) : undefined;
-  const allowed = new Set([alias, "--mode", mode, "--label", label, "--device-auth"]);
-  for (const arg of args) if (!allowed.has(arg)) fail(`Unknown option '${arg}'.`);
 
   const binary = await resolveCodexBinary(registry);
   const staged = await createStagedProfile(paths, alias, mode);
   try {
-    const loginArgs = ["login", ...(args.includes("--device-auth") ? ["--device-auth"] : [])];
+    const loginArgs = ["login", ...(parsed.deviceAuth ? ["--device-auth"] : [])];
     const loginExit = await runCodex(binary, staged, loginArgs);
     if (loginExit !== 0) fail(`Codex login failed with exit code ${loginExit}.`);
     if (!await secureAuthFile(staged)) fail("Codex login succeeded but auth.json was not created.");
@@ -151,7 +171,7 @@ async function accountAdd(args: string[]): Promise<number> {
     if (statusExit !== 0) fail("Codex did not confirm the new login.");
     const madeActive = await withRegistryLock(paths, async () => {
       const current = await readRegistry(paths);
-      if (current.profiles[alias]) fail(`Account '${alias}' was added concurrently.`);
+      if (hasProfile(current, alias)) fail(`Account '${alias}' was added concurrently.`);
       await publishProfile(paths, staged, alias);
       current.codexBinary = binary;
       current.profiles[alias] = { alias, label: normalizedLabel, mode, createdAt: new Date().toISOString() };
@@ -220,16 +240,12 @@ async function accountList(args: string[]): Promise<number> {
   const registry = await readRegistry(paths);
   const aliases = Object.keys(registry.profiles).sort();
   if (aliases.length === 0) { output("No accounts configured."); return 0; }
+  // Labels were validated when the registry was read.
   const accounts = aliases.map((alias) => {
     const profile = registry.profiles[alias]!;
-    let label: string | null = null;
-    if (profile.label !== undefined) {
-      try { label = validateLabel(profile.label); }
-      catch { fail(`Stored label for '${alias}' is invalid. Reset it with 'cx account label ${alias} <identity>'.`); }
-    }
     return {
       alias,
-      label,
+      label: profile.label ?? null,
       mode: profile.mode,
       active: registry.active === alias,
       createdAt: profile.createdAt,
@@ -262,9 +278,7 @@ async function accountList(args: string[]): Promise<number> {
 async function accountLabel(args: string[]): Promise<number> {
   const alias = validateAlias(args[0] || fail("Missing account alias."));
   const clear = args[1] === "--clear";
-  if ((clear && args.length !== 2) || (!clear && args.length !== 2)) {
-    fail("Usage: cx account label <alias> <identity>|--clear");
-  }
+  if (args.length !== 2) fail("Usage: cx account label <alias> <identity>|--clear");
   const label = clear ? undefined : validateLabel(args[1]!);
   await updateRegistry(paths, (registry) => {
     requireProfile(registry, alias);
@@ -339,9 +353,22 @@ async function useAccount(aliasArg: string | undefined): Promise<number> {
   return 0;
 }
 
-async function doctor(): Promise<number> {
+async function doctor(args: string[]): Promise<number> {
+  if (args.some((argument) => argument !== "--offline") || args.filter((argument) => argument === "--offline").length > 1) {
+    fail("Usage: cx doctor [--offline]");
+  }
+  const offline = args.includes("--offline");
   const registry = await readRegistry(paths);
   const problems: string[] = [];
+  const warnings: string[] = [];
+  for (const legacy of legacyDataRoots()) {
+    try {
+      const entries = await readdir(join(legacy, "profiles"));
+      if (entries.length) {
+        warnings.push(`${entries.length} account(s) remain in the pre-rename directory '${legacy}'. Move it with: mv '${legacy}' '${paths.root}'`);
+      }
+    } catch { /* no legacy state to report */ }
+  }
   let binary: string | null = null;
   try { binary = await resolveCodexBinary(registry); } catch (error) { problems.push((error as Error).message); }
   for (const [path, expected, label] of [
@@ -394,18 +421,21 @@ async function doctor(): Promise<number> {
           else if (resolve(home, await readlink(item)) !== join(paths.shared, name)) problems.push(`${alias}: unsafe ${name} link.`);
         }
       }
-      if (binary && await runCodex(binary, home, ["login", "status"], { quiet: true }) !== 0) {
-        problems.push(`${alias}: Codex reports that the login is unavailable or expired.`);
+      // A login check asks Codex, and therefore the network. It is a warning, not
+      // a structural failure, so a stale token stays distinguishable from a
+      // broken profile layout. --offline skips it entirely.
+      if (binary && !offline && await runCodex(binary, home, ["login", "status"], { quiet: true }) !== 0) {
+        warnings.push(`${alias}: Codex reports that the login is unavailable or expired. Run 'cx account login ${alias}'.`);
       }
     } catch (error) { problems.push(`${alias}: ${(error as Error).message}`); }
   }
-  if (registry.active && !registry.profiles[registry.active]) problems.push("Active account does not exist.");
-  if (problems.length) {
-    for (const problem of problems) output(`FAIL ${problem}`);
-    return 1;
-  }
+  if (registry.active && !hasProfile(registry, registry.active)) problems.push("Active account does not exist.");
+  for (const problem of problems) output(`FAIL ${problem}`);
+  for (const warning of warnings) output(`WARN ${warning}`);
+  if (problems.length) return 1;
   output(`OK registry: ${Object.keys(registry.profiles).length} account(s)`);
   output(`OK Codex CLI: ${binary}`);
+  if (offline) output("OK login checks skipped (--offline)");
   output("Credential contents were not inspected.");
   return 0;
 }
@@ -433,7 +463,7 @@ export async function main(args: string[]): Promise<number> {
   if (command === "--uninstall") return uninstallCommand(rest);
   if (command === "account") return accountCommand(rest);
   if (command === "use") return useAccount(rest[0]);
-  if (command === "doctor") return doctor();
+  if (command === "doctor") return doctor(rest);
   if (command === "completion") { output(shellCompletion(requireShell(rest[0]))); return 0; }
   if (command === "shell") {
     if (rest[0] !== "init") fail("Usage: cx shell init bash|zsh");
@@ -441,11 +471,18 @@ export async function main(args: string[]): Promise<number> {
   }
   if (command === "default") {
     const registry = await readRegistry(paths);
+    // The shell hook shadows `codex`. Before the first account exists there is
+    // nothing to select, so fall through to the real CLI instead of breaking a
+    // command the user already relied on.
+    if (!registry.active && process.env.CX_SHELL_HOOK === "1") {
+      process.stderr.write("cx: no CodexAlt account yet; running the real Codex CLI. Create one with 'cx account add <alias> --mode hybrid'.\n");
+      return runCodexPassthrough(await resolveCodexBinary(registry), withoutSeparator(rest));
+    }
     return launch(requireProfile(registry, registry.active), withoutSeparator(rest));
   }
   if (command === "run") {
     const registry = await readRegistry(paths);
-    const candidate = rest[0] && rest[0] !== "--" && registry.profiles[rest[0]] ? rest[0] : registry.active;
+    const candidate = rest[0] && hasProfile(registry, rest[0]) ? rest[0] : registry.active;
     const codexArgs = candidate === rest[0] ? rest.slice(1) : rest;
     return launch(requireProfile(registry, candidate), withoutSeparator(codexArgs));
   }

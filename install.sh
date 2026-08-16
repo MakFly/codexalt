@@ -24,9 +24,7 @@ fi
 case "$(uname -s)-$(uname -m)" in
   Linux-x86_64) artifact="cx-linux-x64" ;;
   Linux-aarch64|Linux-arm64) artifact="cx-linux-arm64" ;;
-  Darwin-x86_64) artifact="cx-macos-x64" ;;
-  Darwin-arm64) artifact="cx-macos-arm64" ;;
-  *) printf '%s\n' "Unsupported platform: $(uname -s) $(uname -m)" >&2; exit 1 ;;
+  *) printf '%s\n' "Unsupported platform: $(uname -s) $(uname -m). CodexAlt targets Linux x64 and arm64 only." >&2; exit 1 ;;
 esac
 
 if [ "$version" = "latest" ]; then
