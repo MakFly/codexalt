@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Changed
 
 - `cx doctor` derives its checks from the shared set rather than a hardcoded list, so the two cannot drift apart again. A missing shared entry or an unlinked profile entry is now a `WARN` naming `cx account repair`, instead of an `ENOENT` that aborted the remaining checks for that profile.
+- `cx account status`, `login`, and `logout` name the profile they act on before delegating to Codex, for example `Account: perso <you@example.com>`. Codex reports how you are authenticated but never as whom, which left the answer unattributable when several accounts exist. The identity shown is the label recorded at `account add` time; `auth.json` is still never read. An unlabelled profile is reported as such, with the command to fix it, and a non-active target says so explicitly, which matters most before a `logout`.
 
 ## [0.4.0] - 16-08-2026
 

@@ -293,6 +293,15 @@ async function accountLabel(args: string[]): Promise<number> {
   return 0;
 }
 
+// The label is metadata the user supplied at 'account add' time, not something
+// read back from the credential file.
+function describeAccount(registry: Registry, alias: string): string {
+  const label = registry.profiles[alias]?.label;
+  const active = registry.active === alias ? "" : " (not the active account)";
+  if (!label) return `Account: ${alias}${active}. No label set; add one with 'cx account label ${alias} <identity>'.`;
+  return `Account: ${alias} <${label}>${active}`;
+}
+
 async function accountAuth(action: "status" | "login" | "logout", args: string[]): Promise<number> {
   const registry = await readRegistry(paths);
   const aliases = args.filter((arg) => !arg.startsWith("--"));
@@ -309,6 +318,10 @@ async function accountAuth(action: "status" | "login" | "logout", args: string[]
   const codexArgs = action === "status"
     ? ["login", "status"]
     : [action, ...(action === "login" && args.includes("--device-auth") ? ["--device-auth"] : [])];
+  // Codex reports how you are authenticated, never as whom, and the identity
+  // lives in auth.json which CodexAlt does not read. Name the profile first so
+  // the answer below is attributable to an account.
+  output(describeAccount(registry, alias));
   const exit = await runCodex(binary, home, codexArgs);
   if (exit === 0 && action === "login" && !await secureAuthFile(home)) fail("Codex login succeeded but auth.json was not created.");
   return exit;

@@ -243,6 +243,21 @@ describe("cx CLI", () => {
     expect((await cx(["run", "constructor", "--", "--help"])).exit).toBe(0);
   });
 
+  test("names the account behind every auth answer", async () => {
+    await cx(["account", "add", "work", "--mode", "isolated", "--label", "kev@example.com"]);
+    const labelled = await cx(["account", "status"]);
+    expect(labelled.exit).toBe(0);
+    expect(labelled.stdout).toContain("Account: work <kev@example.com>");
+    expect(labelled.stdout).not.toContain("not the active account");
+
+    await cx(["account", "add", "solo", "--mode", "isolated"]);
+    const bare = await cx(["account", "status", "solo"]);
+    expect(bare.stdout).toContain("Account: solo (not the active account)");
+    expect(bare.stdout).toContain("cx account label solo");
+    // The identity shown is registry metadata; auth.json is never read.
+    expect(bare.stdout).not.toContain("secret-never-output");
+  });
+
   test("repair relinks a profile created before an entry joined the shared set", async () => {
     await cx(["account", "add", "work", "--mode", "hybrid"]);
     await cx(["account", "add", "solo", "--mode", "isolated"]);

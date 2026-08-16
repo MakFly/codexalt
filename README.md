@@ -164,7 +164,7 @@ If you take this second route, add `cli_auth_credentials_store = "file"` to that
 | `cx: command not found` | Add `~/.local/bin` to your `PATH`, then open a new shell. |
 | `Cannot find the real Codex CLI` | Install the official `codex` binary, or set `CX_CODEX_BIN` to its absolute path. |
 | `codex` still uses the old account | You added the shell hook but did not reopen your shell, or the caller spawns `codex` directly. See section 4. |
-| Not sure which account is live | `cx account list`, or `cx account status` to ask Codex itself. |
+| Not sure which account is live | `cx account list`, or `cx account status`, which names the profile and its label before asking Codex. Codex itself only reports how you are authenticated, never as whom. |
 | Permissions or path look wrong | `cx doctor` reports directory modes, the registry, links, and the resolved Codex binary. `cx doctor --offline` skips the login probes. |
 | Login expired | `cx account login work`, optionally with `--device-auth`. |
 | Your hooks, skills, or MCP servers are missing on an account | The shared area starts blank. Copy them in as shown in section 3, then `cx account repair`. |
@@ -204,7 +204,7 @@ Legend: double boxes are subsystems, single boxes are components. CodexAlt selec
 | `cx account add <alias> --mode hybrid\|isolated [--label <identity>] [--device-auth]` | Authenticate and atomically create an account |
 | `cx account list [--json]` | Show a readable account table or machine-readable JSON |
 | `cx account label <alias> <identity>\|--clear` | Add, replace, or clear a non-secret identity label |
-| `cx account status [alias]` | Ask Codex for the authentication status |
+| `cx account status [alias]` | Name the profile and its label, then ask Codex for the authentication status |
 | `cx account login [alias] [--device-auth]` | Reauthenticate a profile |
 | `cx account logout [alias]` | Log out a profile without deleting it |
 | `cx account remove <alias> [--yes]` | Log out and delete one profile |
