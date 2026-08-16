@@ -33,6 +33,7 @@ Usage:
   cx run [alias] [-- <codex arguments>]
   cx default [-- <codex arguments>]
   cx <alias> [-- <codex arguments>]
+  cx <codex arguments>                    for example: cx --yolo, cx -s read-only
   cx doctor [--offline]
   cx --upgrade [--install-dir <directory>]
   cx --uninstall [--install-dir <directory>] [--purge] [--yes]
@@ -485,6 +486,18 @@ async function doctor(args: string[]): Promise<number> {
   return 0;
 }
 
+async function defaultCommand(codexArgs: string[]): Promise<number> {
+  const registry = await readRegistry(paths);
+  // The shell hook shadows `codex`. Before the first account exists there is
+  // nothing to select, so fall through to the real CLI instead of breaking a
+  // command the user already relied on.
+  if (!registry.active && process.env.CX_SHELL_HOOK === "1") {
+    process.stderr.write("cx: no CodexAlt account yet; running the real Codex CLI. Create one with 'cx account add <alias> --mode hybrid'.\n");
+    return runCodexPassthrough(await resolveCodexBinary(registry), codexArgs);
+  }
+  return launch(requireProfile(registry, registry.active), codexArgs);
+}
+
 async function accountCommand(args: string[]): Promise<number> {
   const [command, ...rest] = args;
   if (command === "add") return accountAdd(rest);
@@ -515,23 +528,20 @@ export async function main(args: string[]): Promise<number> {
     if (rest[0] !== "init") fail("Usage: cx shell init bash|zsh");
     output(shellInit(requireShell(rest[1]))); return 0;
   }
-  if (command === "default") {
-    const registry = await readRegistry(paths);
-    // The shell hook shadows `codex`. Before the first account exists there is
-    // nothing to select, so fall through to the real CLI instead of breaking a
-    // command the user already relied on.
-    if (!registry.active && process.env.CX_SHELL_HOOK === "1") {
-      process.stderr.write("cx: no CodexAlt account yet; running the real Codex CLI. Create one with 'cx account add <alias> --mode hybrid'.\n");
-      return runCodexPassthrough(await resolveCodexBinary(registry), withoutSeparator(rest));
-    }
-    return launch(requireProfile(registry, registry.active), withoutSeparator(rest));
-  }
+  if (command === "default") return defaultCommand(withoutSeparator(rest));
   if (command === "run") {
     const registry = await readRegistry(paths);
     const candidate = rest[0] && hasProfile(registry, rest[0]) ? rest[0] : registry.active;
     const codexArgs = candidate === rest[0] ? rest.slice(1) : rest;
     return launch(requireProfile(registry, candidate), withoutSeparator(codexArgs));
   }
+  // Codex forwards unrecognized options to its interactive CLI. Mirror that: cx
+  // owns only the flags matched above, so anything else starting with '-' is a
+  // Codex flag meant for the active account. Keep this branch last, and add any
+  // future cx option as a subcommand rather than a root flag, or it silently
+  // shadows the Codex flag of the same name. Bare words stay alias-validated so
+  // a mistyped alias is an error instead of a silent Codex prompt.
+  if (command.startsWith("-")) return defaultCommand(withoutSeparator(args));
   validateAlias(command);
   return launch(command, withoutSeparator(rest));
 }

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { chmod, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { VERSION } from "../src/cli";
 
 let root: string;
 let fakeCodex: string;
@@ -275,6 +276,52 @@ describe("cx CLI", () => {
     expect((await cx(["doctor", "--offline"])).stdout).not.toContain("not linked yet");
     expect((await cx(["account", "repair", "work"])).stdout).toContain("already complete");
     expect((await cx(["account", "repair", "unknown"])).exit).toBe(1);
+  });
+
+  test("forwards leading Codex flags to the active account", async () => {
+    await cx(["account", "add", "work", "--mode", "isolated"]);
+    const home = join(root, "data", "profiles", "work");
+
+    expect((await cx(["--yolo"])).exit).toBe(0);
+    expect((await readFile(log, "utf8")).trim().split("\n").pop())
+      .toBe(`${home}|--yolo -c cli_auth_credentials_store="file"`);
+
+    expect((await cx(["-s", "read-only"])).exit).toBe(0);
+    expect((await readFile(log, "utf8")).trim().split("\n").pop())
+      .toBe(`${home}|-s read-only -c cli_auth_credentials_store="file"`);
+
+    // A leading separator is the explicit spelling of the same thing.
+    expect((await cx(["--", "--yolo"])).exit).toBe(0);
+    expect((await readFile(log, "utf8")).trim().split("\n").pop())
+      .toBe(`${home}|--yolo -c cli_auth_credentials_store="file"`);
+
+    // The managed credential store stays out of reach through this path too.
+    const blocked = await cx(["--yolo", "-c", 'cli_auth_credentials_store="keyring"']);
+    expect(blocked.exit).toBe(1);
+    expect(blocked.stderr).toContain("cannot be overridden");
+  });
+
+  test("keeps cx flags and mistyped aliases away from Codex", async () => {
+    await cx(["account", "add", "work", "--mode", "isolated"]);
+    const before = await readFile(log, "utf8");
+
+    expect((await cx(["--help"])).stdout).toContain("Usage:");
+    expect((await cx(["--version"])).stdout.trim()).toBe(VERSION);
+    const lifecycle = await cx(["--uninstall", "--bogus"]);
+    expect(lifecycle.exit).toBe(1);
+    expect(lifecycle.stderr).toContain("Unknown lifecycle option");
+
+    const typo = await cx(["wrk"]);
+    expect(typo.exit).toBe(1);
+    expect(typo.stderr).toContain("Unknown account 'wrk'");
+    expect(await readFile(log, "utf8")).toBe(before);
+  });
+
+  test("refuses forwarded flags when no account is selected", async () => {
+    const result = await cx(["--yolo"]);
+    expect(result.exit).toBe(1);
+    expect(result.stderr).toContain("No account selected");
+    expect(await Bun.file(log).exists()).toBe(false);
   });
 
   test("leaves child arguments after a separator untouched", async () => {
