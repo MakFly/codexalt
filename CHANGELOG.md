@@ -22,6 +22,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [0.4.0] - 16-08-2026
 
+Prepared but never tagged. Its content shipped in 0.4.1, so the release after `v0.3.0` on GitHub is `v0.4.1`.
+
 ### Changed
 
 - **Renamed the project from CodexPlus to CodexAlt.** The GitHub repository moved from `MakFly/codexplusplus` to `MakFly/codexalt`. GitHub redirects the old URLs, so existing clones and installer links keep resolving, but they should be updated.
@@ -108,6 +110,6 @@ First public release. Tagged at `5734fc1`.
 - Versions 0.1.0 and 0.2.0 were never published. Development happened before the repository was made public and was squashed into the initial release commit, which was tagged `v0.3.0`.
 
 [Unreleased]: https://github.com/MakFly/codexalt/compare/v0.4.1...HEAD
-[0.4.1]: https://github.com/MakFly/codexalt/compare/v0.4.0...v0.4.1
+[0.4.1]: https://github.com/MakFly/codexalt/compare/v0.3.0...v0.4.1
 [0.4.0]: https://github.com/MakFly/codexalt/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/MakFly/codexalt/releases/tag/v0.3.0
