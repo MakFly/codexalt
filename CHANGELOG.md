@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.1] - 17-08-2026
+
 ### Added
 
 - `hooks.json` and `CLAUDE.md` join the hybrid shared set (`src/profile.ts`). A Codex harness is not only `config.toml`: without a shared `hooks.json`, no hook fires on a hybrid account, which made the mode look broken to anyone who used hooks. A shared `hooks.json` executes shell commands on every hybrid account, so `README.md` now says to use `--mode isolated` when a hook must not cross accounts.
@@ -105,6 +107,7 @@ First public release. Tagged at `5734fc1`.
 
 - Versions 0.1.0 and 0.2.0 were never published. Development happened before the repository was made public and was squashed into the initial release commit, which was tagged `v0.3.0`.
 
-[Unreleased]: https://github.com/MakFly/codexalt/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/MakFly/codexalt/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/MakFly/codexalt/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/MakFly/codexalt/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/MakFly/codexalt/releases/tag/v0.3.0

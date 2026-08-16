@@ -13,7 +13,7 @@ import { PROFILE_MODES, type ProfileMode, type Registry } from "./types";
 import { validateAlias, validateLabel } from "./validation";
 import { uninstallCx, upgradeCx } from "./lifecycle";
 
-export const VERSION = "0.4.0";
+export const VERSION = "0.4.1";
 const paths = getAppPaths();
 
 function output(message = ""): void { process.stdout.write(`${message}\n`); }
