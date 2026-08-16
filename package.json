@@ -1,6 +1,6 @@
 {
   "name": "codexalt",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Switch between isolated Codex CLI accounts with one command.",
   "license": "MIT",
   "type": "module",

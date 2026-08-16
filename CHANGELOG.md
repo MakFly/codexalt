@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.2] - 17-08-2026
+
 ### Changed
 
 - `cx` now forwards every argument it does not own to Codex, instead of only the ones starting with `-`. `cx exec "prompt"`, `cx resume --last`, and `cx "fix this bug"` therefore work like their plain `codex` equivalents, where 0.4.1 answered `Unknown account 'exec'`. The split mirrors Codex itself: Codex resolves a known subcommand first and treats anything else as the prompt, so cx resolves a known account first and hands the rest over. An account alias still wins over a Codex subcommand of the same name, exactly as in `cx run <alias>`; use `cx default -- exec "…"` to reach Codex when an account is called `exec`. The cost is that a mistyped alias now opens a Codex session with that word as the prompt rather than failing with `Unknown account`, which is the same trade Codex makes.
@@ -113,7 +115,8 @@ First public release. Tagged at `5734fc1`.
 
 - Versions 0.1.0 and 0.2.0 were never published. Development happened before the repository was made public and was squashed into the initial release commit, which was tagged `v0.3.0`.
 
-[Unreleased]: https://github.com/MakFly/codexalt/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/MakFly/codexalt/compare/v0.4.2...HEAD
+[0.4.2]: https://github.com/MakFly/codexalt/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/MakFly/codexalt/compare/v0.3.0...v0.4.1
 [0.4.0]: https://github.com/MakFly/codexalt/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/MakFly/codexalt/releases/tag/v0.3.0
