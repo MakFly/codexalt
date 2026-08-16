@@ -4,7 +4,7 @@ export function shellInit(shell: SupportedShell): string {
   const completion = shell === "bash"
     ? "complete -F _cx_complete cx codex"
     : "compdef _cx_complete cx codex";
-  return `# CodexPlus (${shell})\n` +
+  return `# CodexAlt (${shell})\n` +
     `codex() { command cx default -- \"$@\"; }\n` +
     `${shellCompletion(shell)}\n${completion}\n`;
 }

@@ -99,10 +99,10 @@ describe("release lifecycle", () => {
     expect(await Bun.file(join(data, "registry.json")).exists()).toBeTrue();
   });
 
-  test("purges only recognized CodexPlus state after validation", async () => {
+  test("purges only recognized CodexAlt state after validation", async () => {
     const root = await mkdtemp(join(tmpdir(), "cx-uninstall-")); temporary.push(root);
     const target = join(root, "cx"); await writeFile(target, "binary", { mode: 0o755 });
-    const data = join(root, "codexplusplus"); await mkdir(data);
+    const data = join(root, "codexalt"); await mkdir(data);
     await writeFile(join(data, "registry.json"), '{"version":1,"active":null,"codexBinary":null,"profiles":{}}');
     await mkdir(join(data, "profiles"));
     const result = await uninstallCx({
@@ -174,7 +174,7 @@ describe("release lifecycle", () => {
       paths: getAppPaths({ CX_DATA_HOME: codex }),
       home,
     })).rejects.toThrow("unsafe purge root");
-    const nested = join(codex, "codexplusplus"); await mkdir(nested);
+    const nested = join(codex, "codexalt"); await mkdir(nested);
     await writeFile(join(nested, "registry.json"), '{"version":1,"profiles":{}}');
     await expect(uninstallCx({
       currentExecutable: current,
@@ -188,7 +188,7 @@ describe("release lifecycle", () => {
   test("fails closed when HOME is unavailable during purge", async () => {
     const root = await mkdtemp(join(tmpdir(), "cx-uninstall-")); temporary.push(root);
     const current = join(root, "cx"); await writeFile(current, "current", { mode: 0o755 });
-    const data = join(root, "fake-home", ".codex", "codexplusplus"); await mkdir(data, { recursive: true });
+    const data = join(root, "fake-home", ".codex", "codexalt"); await mkdir(data, { recursive: true });
     await writeFile(join(data, "registry.json"), '{"version":1,"profiles":{}}');
     await expect(uninstallCx({
       currentExecutable: current,

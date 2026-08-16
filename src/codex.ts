@@ -67,7 +67,7 @@ export function assertNoCredentialStoreOverride(args: string[]): void {
     if (argument === "-c" || argument === "--config") value = args[index + 1];
     else if (argument.startsWith("--config=")) value = argument.slice("--config=".length);
     if (value && /^\s*cli_auth_credentials_store\s*=/.test(value)) {
-      throw new Error("cli_auth_credentials_store is managed by CodexPlus and cannot be overridden.");
+      throw new Error("cli_auth_credentials_store is managed by CodexAlt and cannot be overridden.");
     }
   }
 }

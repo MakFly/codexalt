@@ -17,8 +17,8 @@ export function getAppPaths(env: NodeJS.ProcessEnv = process.env): AppPaths {
   const root = explicit
     ? resolve(explicit)
     : platform() === "darwin"
-      ? join(home!, "Library", "Application Support", "codexplusplus")
-      : join(env.XDG_DATA_HOME || join(home!, ".local", "share"), "codexplusplus");
+      ? join(home!, "Library", "Application Support", "codexalt")
+      : join(env.XDG_DATA_HOME || join(home!, ".local", "share"), "codexalt");
 
   return {
     root,

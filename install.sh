@@ -1,9 +1,9 @@
 #!/usr/bin/env sh
 set -eu
 
-repository="${CODEXPLUS_REPOSITORY:-MakFly/codexplusplus}"
-version="${CODEXPLUS_VERSION:-latest}"
-install_dir="${CODEXPLUS_INSTALL_DIR:-${HOME}/.local/bin}"
+repository="${CODEXALT_REPOSITORY:-MakFly/codexalt}"
+version="${CODEXALT_VERSION:-latest}"
+install_dir="${CODEXALT_INSTALL_DIR:-${HOME}/.local/bin}"
 action="${1:-install}"
 
 if [ "$#" -gt 1 ]; then
@@ -13,7 +13,7 @@ fi
 
 if [ "$action" = "--help" ] || [ "$action" = "-h" ]; then
   printf '%s\n' "Usage: install.sh [install|upgrade]"
-  printf '%s\n' "Environment: CODEXPLUS_INSTALL_DIR CODEXPLUS_VERSION CODEXPLUS_REPOSITORY"
+  printf '%s\n' "Environment: CODEXALT_INSTALL_DIR CODEXALT_VERSION CODEXALT_REPOSITORY"
   exit 0
 fi
 if [ "$action" != "install" ] && [ "$action" != "upgrade" ]; then
@@ -45,7 +45,7 @@ if [ "$action" = "upgrade" ] && [ ! -f "$target" ]; then
   exit 1
 fi
 
-temporary="$(mktemp -d "${TMPDIR:-/tmp}/codexplusplus.XXXXXX")"
+temporary="$(mktemp -d "${TMPDIR:-/tmp}/codexalt.XXXXXX")"
 trap 'rm -rf "$temporary"' EXIT HUP INT TERM
 
 curl --fail --location --silent --show-error "${base_url}/${artifact}.tar.gz" --output "${temporary}/${artifact}.tar.gz"

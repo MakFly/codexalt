@@ -9,7 +9,7 @@ afterEach(async () => Promise.all(temporary.splice(0).map((path) => rm(path, { r
 
 async function run(args: string[], installDirectory?: string) {
   const child = Bun.spawn(["sh", installer, ...args], {
-    env: { ...process.env, ...(installDirectory ? { CODEXPLUS_INSTALL_DIR: installDirectory } : {}) },
+    env: { ...process.env, ...(installDirectory ? { CODEXALT_INSTALL_DIR: installDirectory } : {}) },
     stdin: "ignore", stdout: "pipe", stderr: "pipe",
   });
   const [exit, stdout, stderr] = await Promise.all([

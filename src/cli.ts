@@ -18,7 +18,7 @@ function fail(message: string): never { throw new Error(message); }
 function withoutSeparator(args: string[]): string[] { return args[0] === "--" ? args.slice(1) : args; }
 
 function usage(): string {
-  return `CodexPlus ${VERSION}
+  return `CodexAlt ${VERSION}
 
 Usage:
   cx account add <alias> --mode hybrid|isolated [--label <identity>] [--device-auth]
@@ -74,7 +74,7 @@ async function uninstallCommand(args: string[]): Promise<number> {
   if (parsed.yes && !parsed.purge) fail("--yes is only valid with --purge.");
   if (parsed.purge && !parsed.yes) {
     if (!process.stdin.isTTY) fail("Refusing non-interactive purge without --yes.");
-    if (prompt(`Permanently remove CodexPlus data at '${paths.root}'? Type PURGE to confirm: `) !== "PURGE") {
+    if (prompt(`Permanently remove CodexAlt data at '${paths.root}'? Type PURGE to confirm: `) !== "PURGE") {
       fail("Uninstall cancelled.");
     }
   }
@@ -85,7 +85,7 @@ async function uninstallCommand(args: string[]): Promise<number> {
     home: process.env.HOME,
   });
   output(`Removed ${result.target}.`);
-  output(result.purged ? `Purged CodexPlus data at ${paths.root}.` : `Preserved CodexPlus account data at ${paths.root}.`);
+  output(result.purged ? `Purged CodexAlt data at ${paths.root}.` : `Preserved CodexAlt account data at ${paths.root}.`);
   return 0;
 }
 

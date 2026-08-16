@@ -3,7 +3,7 @@ import { arch as hostArch, platform as hostPlatform } from "node:os";
 import { basename, dirname, join, resolve, sep } from "node:path";
 import type { AppPaths } from "./paths";
 
-const DEFAULT_REPOSITORY = "MakFly/codexplusplus";
+const DEFAULT_REPOSITORY = "MakFly/codexalt";
 const OWNED_DATA_ENTRIES = new Set(["registry.json", "profiles", "shared", ".registry.lock"]);
 const MAX_ARCHIVE_BYTES = 200 * 1024 * 1024;
 const MAX_MANIFEST_BYTES = 1024 * 1024;
@@ -71,8 +71,8 @@ export async function upgradeCx(options: UpgradeOptions = {}): Promise<{ target:
   const target = await safeInstallTarget(options.installDirectory, options.currentExecutable || process.execPath);
   const artifact = releaseArtifact(options.platform, options.architecture);
   const archiveName = `${artifact}.tar.gz`;
-  const repository = options.repository || process.env.CODEXPLUS_REPOSITORY || DEFAULT_REPOSITORY;
-  const base = options.releaseBaseUrl || process.env.CODEXPLUS_RELEASE_BASE_URL || `https://github.com/${repository}/releases/latest/download`;
+  const repository = options.repository || process.env.CODEXALT_REPOSITORY || DEFAULT_REPOSITORY;
+  const base = options.releaseBaseUrl || process.env.CODEXALT_RELEASE_BASE_URL || `https://github.com/${repository}/releases/latest/download`;
   const download = options.download || networkDownload;
   if (!options.download && new URL(base).protocol !== "https:") throw new Error("Release downloads require HTTPS.");
   const [archive, manifestBytes] = await Promise.all([
@@ -137,12 +137,12 @@ async function validatePurgeRoot(paths: AppPaths, home: string | undefined): Pro
   if (unknown.length) throw new Error(`Refusing to purge data root containing unknown entries: ${unknown.join(", ")}`);
   const registryPath = join(root, "registry.json");
   const registryMetadata = await lstat(registryPath);
-  if (!registryMetadata.isFile() || registryMetadata.isSymbolicLink()) throw new Error("Refusing purge without a safe CodexPlus registry.");
+  if (!registryMetadata.isFile() || registryMetadata.isSymbolicLink()) throw new Error("Refusing purge without a safe CodexAlt registry.");
   try {
     const registry = JSON.parse(await Bun.file(registryPath).text()) as { version?: unknown; profiles?: unknown };
     if (registry.version !== 1 || typeof registry.profiles !== "object" || registry.profiles === null) throw new Error("invalid");
   } catch {
-    throw new Error("Refusing purge without a valid CodexPlus v1 registry.");
+    throw new Error("Refusing purge without a valid CodexAlt v1 registry.");
   }
 }
 
